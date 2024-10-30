@@ -2,7 +2,6 @@
 
 import { useEffect } from "react";
 import "./globals.css";
-import type { Metadata } from "next";
 import { Inter } from "next/font/google";
 import {
   DynamicContextProvider,
@@ -11,6 +10,8 @@ import {
 } from "../lib/dynamic";
 
 import { GlobalWalletExtension } from "@dynamic-labs/global-wallet";
+
+import LogDisplay from './components/LogDisplay';
 
 const inter = Inter({ subsets: ["latin"] });
 
@@ -63,7 +64,10 @@ export default function RootLayout({
           walletConnectorExtensions: [GlobalWalletExtension]
         }}
       >
-        <body className={inter.className}>{children}</body>
+        <body className={inter.className}>
+          {children}
+          <LogDisplay />
+        </body>
       </DynamicContextProvider>
     </html>
   );
