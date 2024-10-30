@@ -17,14 +17,18 @@ export default function Main() {
     if (!sdkHasLoaded) return;
 
     const signIn = async () => {
+      try {
       if (!user) {
         console.log('logging in with telegram');
         await telegramSignIn({ forceCreateUser: true });
         console.log('logged in with telegram');
+        setIsLoading(false);
       } else {
-        console.log('users', user);
+        console.log('user already exists', user);
       }
-      setIsLoading(false);
+      } catch(e) {
+        console.log('error', e);
+      }
     };
 
     signIn();
