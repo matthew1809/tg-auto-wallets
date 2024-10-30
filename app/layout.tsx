@@ -30,14 +30,26 @@ export default function RootLayout({
   }
 
   useEffect(() => {
-    if (typeof window !== 'undefined') {  // Check if running in browser
+    if (typeof window !== 'undefined') {
+      // Global error handler
       window.onerror = function(message, source, lineno, colno, error) {
-        alert(`Error: ${message}\nAt: ${source}:${lineno}:${colno}\n${error?.stack}`);
+        alert(`Global Error:\nMessage: ${message}\nSource: ${source}\nLine: ${lineno}\nStack: ${error?.stack}`);
         return false;
       };
 
+      // Promise rejection handler
       window.onunhandledrejection = function(event) {
-        alert(`Promise error: ${event.reason}`);
+        alert(`Unhandled Promise:\n${event.reason}`);
+      };
+
+      // Override console.error to show in UI
+      const originalConsoleError = console.error;
+      console.error = (...args) => {
+        originalConsoleError.apply(console, args);
+        const errorMessage = args
+          .map(arg => typeof arg === 'object' ? JSON.stringify(arg, null, 2) : arg)
+          .join('\n');
+        alert(`Console Error:\n${errorMessage}`);
       };
     }
   }, []);
