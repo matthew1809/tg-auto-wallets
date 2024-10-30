@@ -1,5 +1,4 @@
 'use client';
-
 import { useEffect, useState, useRef } from 'react';
 import { CustomLogger } from '../../utils/logger';
 
@@ -7,6 +6,7 @@ export default function LogDisplay() {
  const [logs, setLogs] = useState([]);
  const [isCollapsed, setIsCollapsed] = useState(true);
  const [filter, setFilter] = useState('all');
+ const [expandedLogs, setExpandedLogs] = useState(new Set());
  const logContainerRef = useRef(null);
 
  useEffect(() => {
@@ -16,11 +16,15 @@ export default function LogDisplay() {
    return unsubscribe;
  }, []);
 
- useEffect(() => {
-   if (logContainerRef.current && !isCollapsed) {
-     logContainerRef.current.scrollTop = logContainerRef.current.scrollHeight;
+ const toggleLogExpansion = (index) => {
+   const newExpanded = new Set(expandedLogs);
+   if (newExpanded.has(index)) {
+     newExpanded.delete(index);
+   } else {
+     newExpanded.add(index);
    }
- }, [logs, isCollapsed]);
+   setExpandedLogs(newExpanded);
+ };
 
  const getLogStyle = (log) => {
    switch(log.type) {
@@ -48,6 +52,25 @@ export default function LogDisplay() {
    }
  };
 
+ const renderNetworkBody = (log, index) => {
+   const isExpanded = expandedLogs.has(index);
+   const body = log.direction === 'request' ? log.body : log.body;
+   const bodyStr = typeof body === 'object' ? JSON.stringify(body) : body;
+   const preview = bodyStr?.substring(0, 100) + (bodyStr?.length > 100 ? '...' : '');
+
+   return (
+     <div style={{ marginTop: '4px', color: '#888', cursor: 'pointer' }} onClick={() => toggleLogExpansion(index)}>
+       {log.direction === 'request' ? 'Body: ' : 'Response: '}
+       {isExpanded ? bodyStr : preview}
+       {bodyStr?.length > 100 && (
+         <span style={{ color: '#666', marginLeft: '4px' }}>
+           {isExpanded ? '(collapse)' : '(expand)'}
+         </span>
+       )}
+     </div>
+   );
+ };
+
  const filteredLogs = logs.filter(log => {
    if (filter === 'all') return true;
    if (filter === 'network') return log.type === 'network';
@@ -58,38 +81,32 @@ export default function LogDisplay() {
  const clearLogs = () => {
    CustomLogger.logs = [];
    setLogs([]);
+   setExpandedLogs(new Set());
  };
 
  if (logs.length === 0) return null;
 
  return (
-   <div
-     style={{
-       position: 'fixed',
-       bottom: 0,
-       left: 0,
-       right: 0,
-       zIndex: 9999,
-       backgroundColor: 'rgba(0, 0, 0, 0.9)',
-       color: 'white',
-       fontFamily: 'monospace',
-       fontSize: '12px',
-       border: '1px solid rgba(255, 255, 255, 0.1)',
-     }}
-   >
-     <div
-       style={{
-         padding: '8px',
-         borderBottom: '1px solid rgba(255, 255, 255, 0.1)',
-         display: 'flex',
-         justifyContent: 'space-between',
-         alignItems: 'center',
-       }}
-     >
-       <div 
-         onClick={() => setIsCollapsed(!isCollapsed)}
-         style={{ cursor: 'pointer', flex: 1 }}
-       >
+   <div style={{
+     position: 'fixed',
+     bottom: 0,
+     left: 0,
+     right: 0,
+     zIndex: 9999,
+     backgroundColor: 'rgba(0, 0, 0, 0.9)',
+     color: 'white',
+     fontFamily: 'monospace',
+     fontSize: '12px',
+     border: '1px solid rgba(255, 255, 255, 0.1)',
+   }}>
+     <div style={{
+       padding: '8px',
+       borderBottom: '1px solid rgba(255, 255, 255, 0.1)',
+       display: 'flex',
+       justifyContent: 'space-between',
+       alignItems: 'center',
+     }}>
+       <div onClick={() => setIsCollapsed(!isCollapsed)} style={{ cursor: 'pointer', flex: 1 }}>
          {isCollapsed ? '▼' : '▲'} Console ({filteredLogs.length} logs)
        </div>
        <div style={{ display: 'flex', gap: '8px' }}>
@@ -160,18 +177,12 @@ export default function LogDisplay() {
                  {log.direction === 'request' ? (
                    <>
                      <strong>{log.method}</strong> {log.url}
-                     {log.body && (
-                       <div style={{ marginTop: '4px', color: '#888' }}>
-                         Body: {JSON.stringify(log.body, null, 2)}
-                       </div>
-                     )}
+                     {log.body && renderNetworkBody(log, index)}
                    </>
                  ) : (
                    <>
                      <strong>Status: {log.status}</strong> {log.url}
-                     <div style={{ marginTop: '4px', color: '#888' }}>
-                       Response: {JSON.stringify(log.body, null, 2)}
-                     </div>
+                     {log.body && renderNetworkBody(log, index)}
                    </>
                  )}
                </>
