@@ -30,6 +30,10 @@ export default function Main() {
     signIn();
   }, [sdkHasLoaded]);
 
+  useEffect(() => {
+    console.log('user updated', user)
+  }, [user])
+
   return (
     <div className="min-h-screen flex flex-col items-center justify-center text-black" style={{backgroundColor: "#f9f9fb", backgroundImage: "url('/background-pattern.svg')", backgroundBlendMode: "overlay", backgroundRepeat: "repeat"}}>
       <div className="flex flex-col items-center justify-center text-center max-w-3xl px-4">
