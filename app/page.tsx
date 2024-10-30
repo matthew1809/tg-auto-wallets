@@ -18,7 +18,11 @@ export default function Main() {
 
     const signIn = async () => {
       if (!user) {
+        console.log('logging in with telegram');
         await telegramSignIn({ forceCreateUser: true });
+        console.log('logged in with telegram');
+      } else {
+        console.log('users', user);
       }
       setIsLoading(false);
     };
