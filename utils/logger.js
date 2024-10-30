@@ -3,6 +3,62 @@ export class CustomLogger {
     static logs = [];
     static maxLogs = 50; // Keep last 50 logs
     static listeners = new Set();
+
+    static logNetworkRequest(request) {
+        const logEntry = {
+        type: 'network',
+        timestamp: new Date().toISOString(),
+        direction: 'request',
+        url: request.url,
+        method: request.method,
+        headers: Object.fromEntries(request.headers.entries()),
+        body: request.body
+        };
+        this.addLog(logEntry);
+    }
+    
+    static async logNetworkResponse(response, url) {
+        const clone = response.clone();
+        let body;
+        try {
+        body = await clone.text();
+        try {
+            body = JSON.parse(body);
+        } catch {}
+        } catch {
+        body = '[Unable to read response body]';
+        }
+    
+        const logEntry = {
+        type: 'network',
+        timestamp: new Date().toISOString(),
+        direction: 'response',
+        url,
+        status: response.status,
+        headers: Object.fromEntries(response.headers.entries()),
+        body
+        };
+        this.addLog(logEntry);
+    }
+    
+    static initNetworkLogging() {
+        if (typeof window === 'undefined') return;
+    
+        const originalFetch = window.fetch;
+        window.fetch = async (...args) => {
+        const request = args[0] instanceof Request ? args[0] : new Request(...args);
+        this.logNetworkRequest(request);
+        
+        try {
+            const response = await originalFetch(...args);
+            await this.logNetworkResponse(response, request.url);
+            return response;
+        } catch (error) {
+            this.error('Fetch error:', error);
+            throw error;
+        }
+        };
+    }
   
     static createLogDisplay() {
       const logDiv = document.createElement('div');

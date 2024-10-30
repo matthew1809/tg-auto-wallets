@@ -37,13 +37,13 @@ export default function RootLayout({
         alert(`Global Error:\nMessage: ${message}\nSource: ${source}\nLine: ${lineno}\nStack: ${error?.stack}`);
         return false;
       };
-
-      // Promise rejection handler
+ 
+      // Promise rejection handler 
       window.onunhandledrejection = function(event) {
         alert(`Unhandled Promise:\n${event.reason}`);
       };
-
-      // Override console.error to show in UI
+ 
+      // Override console.error
       const originalConsoleError = console.error;
       console.error = (...args) => {
         originalConsoleError.apply(console, args);

@@ -1,70 +1,187 @@
-// components/LogDisplay.js
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useRef } from 'react';
 import { CustomLogger } from '../../utils/logger';
 
 export default function LogDisplay() {
-  const [logs, setLogs] = useState([]);
-  const [isCollapsed, setIsCollapsed] = useState(true);
+ const [logs, setLogs] = useState([]);
+ const [isCollapsed, setIsCollapsed] = useState(true);
+ const [filter, setFilter] = useState('all');
+ const logContainerRef = useRef(null);
 
-  useEffect(() => {
-    CustomLogger.init();
-    const unsubscribe = CustomLogger.subscribe(setLogs);
-    return unsubscribe;
-  }, []);
+ useEffect(() => {
+   CustomLogger.init();
+   CustomLogger.initNetworkLogging();
+   const unsubscribe = CustomLogger.subscribe(setLogs);
+   return unsubscribe;
+ }, []);
 
-  if (logs.length === 0) return null;
+ useEffect(() => {
+   if (logContainerRef.current && !isCollapsed) {
+     logContainerRef.current.scrollTop = logContainerRef.current.scrollHeight;
+   }
+ }, [logs, isCollapsed]);
 
-  return (
-    <div
-      style={{
-        position: 'fixed',
-        bottom: 0,
-        left: 0,
-        right: 0,
-        zIndex: 9999,
-        backgroundColor: 'rgba(0, 0, 0, 0.8)',
-        color: 'white',
-        fontFamily: 'monospace',
-        fontSize: '12px',
-      }}
-    >
-      <div
-        onClick={() => setIsCollapsed(!isCollapsed)}
-        style={{
-          padding: '4px 8px',
-          backgroundColor: 'rgba(0, 0, 0, 0.9)',
-          cursor: 'pointer',
-        }}
-      >
-        {isCollapsed ? '▼' : '▲'} Console ({logs.length} logs)
-      </div>
-      {!isCollapsed && (
-        <div
-          style={{
-            maxHeight: '200px',
-            overflowY: 'auto',
-            padding: '8px',
-          }}
-        >
-          {logs.map((log, index) => (
-            <div
-              key={index}
-              style={{
-                color: log.type === 'error' ? '#ff4444' : 'white',
-                marginBottom: '4px',
-                whiteSpace: 'pre-wrap',
-                wordBreak: 'break-all',
-              }}
-            >
-              <span style={{ color: '#888' }}>{log.timestamp.split('T')[1].split('.')[0]}</span>
-              {' '}
-              {log.message}
-            </div>
-          ))}
-        </div>
-      )}
-    </div>
-  );
+ const getLogStyle = (log) => {
+   switch(log.type) {
+     case 'network':
+       return {
+         color: log.direction === 'request' ? '#4CAF50' : '#2196F3',
+         marginBottom: '8px',
+         borderLeft: `3px solid ${log.direction === 'request' ? '#4CAF50' : '#2196F3'}`,
+         paddingLeft: '8px'
+       };
+     case 'error':
+       return { 
+         color: '#ff4444',
+         marginBottom: '8px',
+         borderLeft: '3px solid #ff4444',
+         paddingLeft: '8px'
+       };
+     default:
+       return { 
+         color: 'white',
+         marginBottom: '8px',
+         borderLeft: '3px solid #888',
+         paddingLeft: '8px'
+       };
+   }
+ };
+
+ const filteredLogs = logs.filter(log => {
+   if (filter === 'all') return true;
+   if (filter === 'network') return log.type === 'network';
+   if (filter === 'errors') return log.type === 'error';
+   return log.type === 'log';
+ });
+
+ const clearLogs = () => {
+   CustomLogger.logs = [];
+   setLogs([]);
+ };
+
+ if (logs.length === 0) return null;
+
+ return (
+   <div
+     style={{
+       position: 'fixed',
+       bottom: 0,
+       left: 0,
+       right: 0,
+       zIndex: 9999,
+       backgroundColor: 'rgba(0, 0, 0, 0.9)',
+       color: 'white',
+       fontFamily: 'monospace',
+       fontSize: '12px',
+       border: '1px solid rgba(255, 255, 255, 0.1)',
+     }}
+   >
+     <div
+       style={{
+         padding: '8px',
+         borderBottom: '1px solid rgba(255, 255, 255, 0.1)',
+         display: 'flex',
+         justifyContent: 'space-between',
+         alignItems: 'center',
+       }}
+     >
+       <div 
+         onClick={() => setIsCollapsed(!isCollapsed)}
+         style={{ cursor: 'pointer', flex: 1 }}
+       >
+         {isCollapsed ? '▼' : '▲'} Console ({filteredLogs.length} logs)
+       </div>
+       <div style={{ display: 'flex', gap: '8px' }}>
+         <select 
+           value={filter}
+           onChange={(e) => setFilter(e.target.value)}
+           style={{
+             background: 'transparent',
+             color: 'white',
+             border: '1px solid rgba(255, 255, 255, 0.3)',
+             borderRadius: '4px',
+             padding: '2px 4px'
+           }}
+         >
+           <option value="all">All</option>
+           <option value="network">Network</option>
+           <option value="errors">Errors</option>
+           <option value="logs">Logs</option>
+         </select>
+         <button
+           onClick={clearLogs}
+           style={{
+             background: 'transparent',
+             color: 'white',
+             border: '1px solid rgba(255, 255, 255, 0.3)',
+             borderRadius: '4px',
+             padding: '2px 8px',
+             cursor: 'pointer'
+           }}
+         >
+           Clear
+         </button>
+       </div>
+     </div>
+     {!isCollapsed && (
+       <div
+         ref={logContainerRef}
+         style={{
+           maxHeight: '300px',
+           overflowY: 'auto',
+           padding: '8px',
+         }}
+       >
+         {filteredLogs.map((log, index) => (
+           <div
+             key={index}
+             style={{
+               ...getLogStyle(log),
+               whiteSpace: 'pre-wrap',
+               wordBreak: 'break-all',
+               fontSize: '11px',
+               lineHeight: '1.4'
+             }}
+           >
+             <span style={{ color: '#888' }}>
+               {log.timestamp.split('T')[1].split('.')[0]}
+             </span>
+             {' '}
+             {log.type === 'network' ? (
+               <>
+                 <span style={{ 
+                   fontWeight: 'bold',
+                   color: log.direction === 'request' ? '#4CAF50' : '#2196F3' 
+                 }}>
+                   {log.direction === 'request' ? '→' : '←'}
+                 </span>
+                 {' '}
+                 {log.direction === 'request' ? (
+                   <>
+                     <strong>{log.method}</strong> {log.url}
+                     {log.body && (
+                       <div style={{ marginTop: '4px', color: '#888' }}>
+                         Body: {JSON.stringify(log.body, null, 2)}
+                       </div>
+                     )}
+                   </>
+                 ) : (
+                   <>
+                     <strong>Status: {log.status}</strong> {log.url}
+                     <div style={{ marginTop: '4px', color: '#888' }}>
+                       Response: {JSON.stringify(log.body, null, 2)}
+                     </div>
+                   </>
+                 )}
+               </>
+             ) : (
+               log.message
+             )}
+           </div>
+         ))}
+       </div>
+     )}
+   </div>
+ );
 }
